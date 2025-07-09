@@ -20,6 +20,8 @@ Questa funzione utilizza **MobileNetV2** pre-addestrato su **ImageNet** per clas
   ]
 }
 
+```
+
 ## ⌨️​ Esempio di input
 
 curl -X POST http://INDIRIZZO/function/animal-detector   -H "Content-Type: multipart/form-data"   -F "file=@/home/kevin/Immagini/cane.jpeg"
