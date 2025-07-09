@@ -1,4 +1,4 @@
-# 🐾 Animal Detector (MobileNetV2 + PyTorch)
+# 🐾 Animal Detector (MobileNetV2)
 
 Questa funzione utilizza **MobileNetV2** pre-addestrato su **ImageNet** per classificare immagini, restituendo le **prime 3 predizioni** con le rispettive probabilità.
 
