@@ -18,7 +18,7 @@ LABELS = requests.get(LABELS_URL).text.strip().split("\n")
 
 def handle(event, context):
     try:
-        # Converti event.body in bytes se è stringa
+        # Converte event.body in bytes se è stringa
         body = event.body
         if isinstance(body, str):
             body = body.encode('utf-8')
@@ -47,7 +47,7 @@ def handle(event, context):
                 "body": "Errore: nessun file trovato nella richiesta."
             }
 
-        # Estrai il file e prepara il tensor
+        # Estrae il file e prepara il tensor
         file_item = fs['file']
         image = Image.open(file_item.file).convert("RGB")
         input_tensor = transform(image).unsqueeze(0)
@@ -55,7 +55,7 @@ def handle(event, context):
         with torch.no_grad():
             outputs = model(input_tensor)
             
-            # Ottieni i primi 3 risultati (classi e probabilità)
+            # Ottiene i primi 3 risultati (classi e probabilità)
             probabilities = torch.nn.functional.softmax(outputs, dim=1)
             top3_probs, top3_classes = torch.topk(probabilities, 3)
 
