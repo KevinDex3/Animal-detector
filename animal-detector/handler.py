@@ -1,16 +1,12 @@
-import torch
-from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
-from PIL import Image
-import json
-import requests
 import cgi
+import json
 from io import BytesIO
+from pathlib import Path
 
-# Carica i pesi e la trasformazione
-weights = MobileNet_V2_Weights.IMAGENET1K_V1
-model = mobilenet_v2(weights=weights)
-model.eval()
-transform = weights.transforms()
+import requests
+import torch
+from PIL import Image
+from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 
 # Carica le etichette ImageNet
 LABELS_URL = "https://raw.githubusercontent.com/pytorch/hub/master/imagenet_classes.txt"
@@ -18,12 +14,25 @@ LABELS = requests.get(LABELS_URL).text.strip().split("\n")
 
 def handle(event, context):
     try:
-        # Converte event.body in bytes se è stringa
+        # Rimuove i pesi MobileNetV2 dalla cache per forzare il download
+        cache_dir = Path.home() / ".cache" / "torch" / "hub" / "checkpoints"
+        for file_path in cache_dir.glob("mobilenet_v2-*.pth"):
+            try:
+                file_path.unlink()
+            except Exception:
+                pass  # Ignora eventuali errori di rimozione
+
+        # Carica i pesi e la trasformazione per MobileNetV2
+        weights = MobileNet_V2_Weights.IMAGENET1K_V1
+        model = mobilenet_v2(weights=weights)
+        model.eval()
+        transform = weights.transforms()
+
+        # Preleva e processa il corpo della richiesta
         body = event.body
         if isinstance(body, str):
             body = body.encode('utf-8')
 
-        # Prepara le variabili d'ambiente richieste da cgi.FieldStorage
         headers = dict(event.headers)
         content_type = headers.get("content-type") or headers.get("Content-Type", "")
         content_length = str(len(body))
@@ -34,7 +43,6 @@ def handle(event, context):
             "CONTENT_LENGTH": content_length
         }
 
-        # Parsing multipart/form-data
         fs = cgi.FieldStorage(
             fp=BytesIO(body),
             environ=environ,
@@ -47,19 +55,16 @@ def handle(event, context):
                 "body": "Errore: nessun file trovato nella richiesta."
             }
 
-        # Estrae il file e prepara il tensor
         file_item = fs['file']
         image = Image.open(file_item.file).convert("RGB")
         input_tensor = transform(image).unsqueeze(0)
 
+        # Inference
         with torch.no_grad():
             outputs = model(input_tensor)
-            
-            # Ottiene i primi 3 risultati (classi e probabilità)
             probabilities = torch.nn.functional.softmax(outputs, dim=1)
             top3_probs, top3_classes = torch.topk(probabilities, 3)
 
-        # Prepara il risultato per la risposta
         top3_results = []
         for i in range(3):
             class_idx = top3_classes[0][i].item()
@@ -78,4 +83,3 @@ def handle(event, context):
             "statusCode": 500,
             "body": f"Errore durante l'elaborazione: {str(e)}"
         }
-
